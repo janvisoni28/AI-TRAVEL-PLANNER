@@ -1,0 +1,6 @@
+{
+  "name": "AI Travel Planner",
+  "description": "A production-ready AI Travel Planner featuring day-wise itineraries, interactive trip dashboard, AI chat assistant, budget estimator, expense tracker, and premium travel tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
