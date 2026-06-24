@@ -57,7 +57,7 @@ async function startServer() {
 
   // Helper to run generateContent with robust model fallback
   async function generateWithFallback(params: { contents: any; config?: any }) {
-    const models = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+    const models = ["gemini-3.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"];
     let lastError = null;
 
     for (const model of models) {
