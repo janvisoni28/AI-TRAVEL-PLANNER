@@ -1,7 +1,8 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI } from "@google/genai";
+import { GeminiService } from "./server/geminiService.js";
+import { errorHandler } from "./server/errorMiddleware.js";
 
 // Helper for unique ID generation
 const generateId = () => Math.random().toString(36).substring(2, 11);
@@ -45,42 +46,11 @@ async function startServer() {
   // Express body parsers
   app.use(express.json());
 
-  // Initialize Gemini Client
-  const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-    httpOptions: {
-      headers: {
-        "User-Agent": "aistudio-build",
-      },
-    },
-  });
-
-  // Helper to run generateContent with robust model fallback
-  async function generateWithFallback(params: { contents: any; config?: any }) {
-    const models = ["gemini-3.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"];
-    let lastError = null;
-
-    for (const model of models) {
-      try {
-        console.log(`Attempting Gemini generation with model: ${model}`);
-        const response = await ai.models.generateContent({
-          ...params,
-          model,
-        });
-        return response;
-      } catch (error: any) {
-        console.warn(`Model ${model} failed:`, error.message || error);
-        lastError = error;
-      }
-    }
-    throw lastError || new Error("All model attempts failed");
-  }
-
   // ==========================================
   // TRIP PLANNER APIS (STATELESS GEMINI CALLS)
   // ==========================================
 
-  app.post("/api/trips/create", authenticateToken, async (req: any, res) => {
+  app.post("/api/trips/create", authenticateToken, async (req: any, res, next) => {
     const { fromCity, destination, days, budget, style, travelers, interests } = req.body;
 
     if (!destination || !days || !budget) {
@@ -176,11 +146,12 @@ Use the actual country's local currency symbol or '₹' for Indian Rupees, or '$
 Keep the budget mathematically within the user's limit of ${budget}. Ensure to write creative, helpful descriptions without generic markers.
 `;
 
-      const response = await generateWithFallback({
+      const response = await GeminiService.generateContent({
         contents: prompt,
         config: {
           responseMimeType: "application/json",
         },
+        promptDescription: "Itinerary generation for " + destination,
       });
 
       const responseText = response.text;
@@ -227,8 +198,7 @@ Keep the budget mathematically within the user's limit of ${budget}. Ensure to w
 
       res.status(201).json(newTrip);
     } catch (error: any) {
-      console.error("Gemini Generation Error:", error);
-      res.status(500).json({ error: "Failed to generate AI trip: " + error.message });
+      next(error);
     }
   });
 
@@ -236,7 +206,7 @@ Keep the budget mathematically within the user's limit of ${budget}. Ensure to w
   // AI CHAT ASSISTANT (STATELESS PROXY)
   // ==========================================
 
-  app.post("/api/chat", authenticateToken, async (req: any, res) => {
+  app.post("/api/chat", authenticateToken, async (req: any, res, next) => {
     const { message, tripContext, history } = req.body;
 
     if (!message) {
@@ -283,21 +253,24 @@ Try to provide actual practical tips (e.g. currency, travel adapters, safety war
         parts: [{ text: message }],
       });
 
-      const response = await generateWithFallback({
+      const response = await GeminiService.generateContent({
         contents: contentsPayload,
         config: {
           systemInstruction,
         },
+        promptDescription: "Chat assistance",
       });
 
       const replyText = response.text || "I am here to help you plan your incredible journey!";
 
       res.json({ reply: replyText });
     } catch (error: any) {
-      console.error("Chat API Error:", error);
-      res.status(500).json({ error: "Failed to generate AI response: " + error.message });
+      next(error);
     }
   });
+
+  // Global Error Handler Middleware (placed after API routes)
+  app.use(errorHandler);
 
   // ==========================================
   // VITE DEV SERVER OR STATIC SERVING MIDDLEWARE

@@ -290,6 +290,15 @@ export default function App() {
   // Premium toggle states
   const [activeLanguage, setActiveLanguage] = useState("en");
 
+  // Toast overlay states
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const showToast = (message: string, type: "success" | "error" | "info" = "info") => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast((curr) => curr?.message === message ? null : curr);
+    }, 5000);
+  };
+
   // Load user session on boot
   useEffect(() => {
     initializeLocalStorage();
@@ -643,6 +652,7 @@ export default function App() {
         setFromCity("");
         setDest("");
         setInterests([]);
+        showToast(`Adventure to ${dest} generated successfully!`, "success");
 
         // Generate success notification locally
         const generatedNotif = {
@@ -659,10 +669,14 @@ export default function App() {
         localStorage.setItem("notifications", JSON.stringify(storedNotifs));
         fetchNotifications();
       } else {
-        setGenerationError(data.error || "Failed to generate AI trip");
+        const errorMsg = data.error || "Failed to generate AI trip";
+        setGenerationError(errorMsg);
+        showToast(errorMsg, "error");
       }
-    } catch {
-      setGenerationError("Server error. Please verify Gemini API connectivity.");
+    } catch (err: any) {
+      const errorMsg = err?.message || "Server error. Please verify Gemini API connectivity.";
+      setGenerationError(errorMsg);
+      showToast(errorMsg, "error");
     } finally {
       setIsGeneratingTrip(false);
     }
@@ -785,16 +799,20 @@ export default function App() {
         const chatKey = selectedTrip ? `chatHistory-${selectedTrip.id}` : "chatHistory-global";
         localStorage.setItem(chatKey, JSON.stringify(finalMessages));
       } else {
+        const errorMsg = data.error || "Generation issue. Please verify Gemini API setup.";
         setChatMessages((prev) => [
           ...prev,
-          { role: "model", text: "⚠️ Generation issue. Please verify Gemini API setup.", timestamp: new Date().toISOString() },
+          { role: "model", text: `⚠️ ${errorMsg}`, timestamp: new Date().toISOString() },
         ]);
+        showToast(errorMsg, "error");
       }
-    } catch {
+    } catch (err: any) {
+      const errorMsg = err?.message || "Network connectivity lost to server.";
       setChatMessages((prev) => [
         ...prev,
-        { role: "model", text: "⚠️ Network connectivity lost to server.", timestamp: new Date().toISOString() },
+        { role: "model", text: `⚠️ ${errorMsg}`, timestamp: new Date().toISOString() },
       ]);
+      showToast(errorMsg, "error");
     } finally {
       setIsChatSending(false);
     }
@@ -835,56 +853,6 @@ export default function App() {
 
         {/* Right side Profile & Notification Tray */}
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2 bg-slate-800/80 border border-slate-700/60 rounded-xl hover:bg-slate-700 text-slate-300 hover:text-white transition-all relative"
-            >
-              <Bell className="w-4 h-4" />
-              {notifications.some((n) => !n.read) && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-slate-900 animate-pulse" />
-              )}
-            </button>
-
-            {/* Notification Popup Dropdown */}
-            {showNotifications && (
-              <div className="absolute right-0 mt-2.5 w-80 bg-slate-900 border border-slate-800/90 rounded-2xl p-4 shadow-2xl z-50">
-                <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
-                  <span className="text-xs font-semibold text-white">System Messages</span>
-                  <button onClick={() => setNotifications(prev => prev.map(n => ({...n, read: true})))} className="text-[10px] text-teal-400 font-mono hover:underline">Mark all read</button>
-                </div>
-                <div className="space-y-2.5 max-h-[220px] overflow-y-auto">
-                  {notifications.length > 0 ? (
-                    notifications.map((notif) => (
-                      <div
-                        key={notif.id}
-                        onClick={() => markNotificationRead(notif.id)}
-                        className={`p-2.5 rounded-xl border transition-colors cursor-pointer ${
-                          notif.read ? "bg-slate-950/40 border-slate-850 text-slate-400" : "bg-teal-500/5 border-teal-500/25 text-slate-200"
-                        }`}
-                      >
-                        <p className="text-[11px] font-semibold">{notif.title}</p>
-                        <p className="text-[10px] mt-0.5">{notif.message}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-xs text-slate-500 text-center py-4">No notifications present</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {user && (
-            <div className="flex items-center bg-slate-800/50 border border-slate-700/40 rounded-full p-1">
-              <img
-                src={user.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg?seed=globetrotter"}
-                alt="user avatar"
-                className="w-6 h-6 rounded-full border border-teal-500/30"
-              />
-            </div>
-          )}
-
           {/* Mobile hamburger */}
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-300 md:hidden hover:bg-slate-700">
             {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -935,12 +903,6 @@ export default function App() {
                 >
                   <Compass className="w-4 h-4" />
                   Start AI Planning Free
-                </button>
-                <button
-                  onClick={() => setPage("dashboard")}
-                  className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 px-8 py-3 rounded-xl font-medium transition-colors cursor-pointer"
-                >
-                  Explore Dashboard
                 </button>
               </div>
 
@@ -1197,7 +1159,7 @@ export default function App() {
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Mumbai, New Delhi, London, New York"
+                        placeholder=""
                         value={fromCity}
                         onChange={(e) => setFromCity(e.target.value)}
                         className="w-full text-xs bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-3 text-white focus:outline-none focus:border-teal-500 transition-colors"
@@ -1212,7 +1174,7 @@ export default function App() {
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Goa, Manali, Paris, Tokyo"
+                        placeholder=""
                         value={dest}
                         onChange={(e) => setDest(e.target.value)}
                         className="w-full text-xs bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-3 text-white focus:outline-none focus:border-teal-500 transition-colors"
@@ -1258,7 +1220,7 @@ export default function App() {
                         type="number"
                         required
                         min="2000"
-                        placeholder="e.g. 15000"
+                        placeholder=""
                         value={budget}
                         onChange={(e) => setBudget(e.target.value)}
                         className="w-full text-xs bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-3 text-white focus:outline-none focus:border-teal-500 transition-colors font-mono"
@@ -1267,47 +1229,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1 font-medium">Aesthetic / Travel Style</label>
-                  <div className="grid grid-cols-5 gap-1 bg-slate-950 border border-slate-800 p-1 rounded-xl">
-                    {["Budget", "Luxury", "Adventure", "Family", "Couple"].map((st) => (
-                      <button
-                        key={st}
-                        type="button"
-                        onClick={() => setStyle(st)}
-                        className={`text-[10px] font-medium py-2 rounded-lg transition-all ${
-                          style === st ? "bg-teal-500 text-slate-950 font-bold" : "text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        {st}
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
-                {/* Multi-interests tags */}
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1.5 font-medium">Interests & Focused Attractions</label>
-                  <div className="flex flex-wrap gap-2">
-                    {["Historical Places", "Nature", "Food", "Shopping", "Adventure", "Beaches", "Nightlife", "Scenic drives", "Museums"].map((int) => {
-                      const selected = interests.includes(int);
-                      return (
-                        <button
-                          key={int}
-                          type="button"
-                          onClick={() => toggleInterest(int)}
-                          className={`text-xs px-3 py-1.5 rounded-full transition-all border ${
-                            selected
-                              ? "bg-indigo-500/20 text-indigo-300 border-indigo-400/50 shadow-sm"
-                              : "bg-slate-950 border-slate-800 text-slate-400 hover:text-white"
-                          }`}
-                        >
-                          {int}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
 
                 {generationError && (
                   <p className="text-xs font-mono text-rose-400 border border-rose-500/20 bg-rose-500/5 p-3 rounded-xl">
@@ -1853,6 +1775,33 @@ export default function App() {
           <button onClick={() => alert("Personalized flight matrix recommendations grounded on actual real-time carrier flight grids.")} className="hover:text-white transition-colors">Live flight matrix</button>
         </div>
       </footer>
+
+      {/* TOAST NOTIFICATION OVERLAY */}
+      {toast && (
+        <div id="toast-overlay" className="fixed bottom-6 right-6 z-50 max-w-sm">
+          <div className={`px-5 py-3.5 rounded-2xl shadow-2xl border flex items-center gap-3 backdrop-blur-md ${
+            toast.type === "success" 
+              ? "bg-teal-950/90 border-teal-500/30 text-teal-200" 
+              : toast.type === "error"
+              ? "bg-rose-950/90 border-rose-500/30 text-rose-200"
+              : "bg-slate-900/90 border-slate-700/50 text-slate-200"
+          }`}>
+            <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+              toast.type === "success" ? "bg-teal-400 animate-pulse" : toast.type === "error" ? "bg-rose-400 animate-pulse" : "bg-blue-400 animate-pulse"
+            }`} />
+            <div className="flex-1 text-xs font-medium tracking-tight leading-relaxed">
+              {toast.message}
+            </div>
+            <button 
+              id="close-toast-btn"
+              onClick={() => setToast(null)} 
+              className="text-[10px] font-semibold opacity-60 hover:opacity-100 hover:underline transition-all uppercase pl-2 flex-shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
