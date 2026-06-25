@@ -41,6 +41,43 @@ import CurrencyConverter from "./components/CurrencyConverter.tsx";
 import VoiceAssistant from "./components/VoiceAssistant.tsx";
 
 // Helper for scenic cover pictures
+const POPULAR_CITIES = [
+  "New Delhi, India",
+  "Mumbai, Maharashtra",
+  "Bengaluru, Karnataka",
+  "Kolkata, West Bengal",
+  "Chennai, Tamil Nadu",
+  "Hyderabad, Telangana",
+  "Pune, Maharashtra",
+  "Goa, India",
+  "Manali, Himachal Pradesh",
+  "Srinagar, Jammu & Kashmir",
+  "Leh Ladakh, India",
+  "Jaipur, Rajasthan",
+  "Udaipur, Rajasthan",
+  "Agra, Uttar Pradesh",
+  "Kochi, Kerala",
+  "Shimla, Himachal Pradesh",
+  "Dharamshala, Himachal Pradesh",
+  "Ooty, Tamil Nadu",
+  "Rishikesh, Uttarakhand",
+  "Varanasi, Uttar Pradesh",
+  "Paris, France",
+  "Tokyo, Japan",
+  "London, United Kingdom",
+  "New York, USA",
+  "Singapore",
+  "Dubai, UAE",
+  "Bangkok, Thailand",
+  "Bali, Indonesia",
+  "Phuket, Thailand",
+  "Maldives",
+  "Sydney, Australia",
+  "Rome, Italy",
+  "Barcelona, Spain",
+  "Amsterdam, Netherlands"
+];
+
 const getDestinationImage = (dest: string) => {
   const d = dest.toLowerCase();
   if (d.includes("goa")) return "https://images.unsplash.com/photo-1512411516757-772a16072045?auto=format&fit=crop&w=600&q=80";
@@ -265,10 +302,12 @@ export default function App() {
   // Create Trip states
   const [fromCity, setFromCity] = useState("");
   const [dest, setDest] = useState("");
-  const [days, setDays] = useState("3");
-  const [budget, setBudget] = useState("15000");
+  const [showFromSuggestions, setShowFromSuggestions] = useState(false);
+  const [showDestSuggestions, setShowDestSuggestions] = useState(false);
+  const [days, setDays] = useState("");
+  const [budget, setBudget] = useState("");
   const [style, setStyle] = useState("Adventure");
-  const [travelers, setTravelers] = useState("2");
+  const [travelers, setTravelers] = useState("");
   const [interests, setInterests] = useState<string[]>([]);
   const [isGeneratingTrip, setIsGeneratingTrip] = useState(false);
   const [generationError, setGenerationError] = useState("");
@@ -1161,9 +1200,39 @@ export default function App() {
                         required
                         placeholder=""
                         value={fromCity}
-                        onChange={(e) => setFromCity(e.target.value)}
+                        onChange={(e) => {
+                          setFromCity(e.target.value);
+                          setShowFromSuggestions(true);
+                        }}
+                        onFocus={() => setShowFromSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowFromSuggestions(false), 200)}
                         className="w-full text-xs bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-3 text-white focus:outline-none focus:border-teal-500 transition-colors"
                       />
+                      {showFromSuggestions && (
+                        <div className="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50">
+                          {POPULAR_CITIES.filter((city) =>
+                            city.toLowerCase().includes(fromCity.toLowerCase())
+                          ).map((city) => (
+                            <div
+                              key={city}
+                              onMouseDown={() => {
+                                setFromCity(city);
+                                setShowFromSuggestions(false);
+                              }}
+                              className="px-3.5 py-2.5 text-xs text-slate-300 hover:text-white hover:bg-slate-850 cursor-pointer transition-colors border-b border-slate-800/50 last:border-0 text-left"
+                            >
+                              {city}
+                            </div>
+                          ))}
+                          {POPULAR_CITIES.filter((city) =>
+                            city.toLowerCase().includes(fromCity.toLowerCase())
+                          ).length === 0 && (
+                            <div className="px-3.5 py-2.5 text-xs text-slate-500 italic text-left">
+                              No matching cities
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1176,9 +1245,39 @@ export default function App() {
                         required
                         placeholder=""
                         value={dest}
-                        onChange={(e) => setDest(e.target.value)}
+                        onChange={(e) => {
+                          setDest(e.target.value);
+                          setShowDestSuggestions(true);
+                        }}
+                        onFocus={() => setShowDestSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowDestSuggestions(false), 200)}
                         className="w-full text-xs bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3.5 py-3 text-white focus:outline-none focus:border-teal-500 transition-colors"
                       />
+                      {showDestSuggestions && (
+                        <div className="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50">
+                          {POPULAR_CITIES.filter((city) =>
+                            city.toLowerCase().includes(dest.toLowerCase())
+                          ).map((city) => (
+                            <div
+                              key={city}
+                              onMouseDown={() => {
+                                setDest(city);
+                                setShowDestSuggestions(false);
+                              }}
+                              className="px-3.5 py-2.5 text-xs text-slate-300 hover:text-white hover:bg-slate-850 cursor-pointer transition-colors border-b border-slate-800/50 last:border-0 text-left"
+                            >
+                              {city}
+                            </div>
+                          ))}
+                          {POPULAR_CITIES.filter((city) =>
+                            city.toLowerCase().includes(dest.toLowerCase())
+                          ).length === 0 && (
+                            <div className="px-3.5 py-2.5 text-xs text-slate-500 italic text-left">
+                              No matching cities
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1187,28 +1286,28 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs text-slate-400 mb-1 font-medium">Duration (Days)</label>
-                      <select
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        placeholder=""
                         value={days}
                         onChange={(e) => setDays(e.target.value)}
-                        className="w-full text-xs bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-white focus:outline-none focus:border-teal-500 transition-colors"
-                      >
-                        {[1, 2, 3, 4, 5, 6, 7, 10, 14].map((d) => (
-                          <option key={d} value={d}>{d} Days</option>
-                        ))}
-                      </select>
+                        className="w-full text-xs bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-white focus:outline-none focus:border-teal-500 transition-colors font-mono"
+                      />
                     </div>
 
                     <div>
                       <label className="block text-xs text-slate-400 mb-1 font-medium">Group Size</label>
-                      <select
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        placeholder=""
                         value={travelers}
                         onChange={(e) => setTravelers(e.target.value)}
-                        className="w-full text-xs bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-white focus:outline-none focus:border-teal-500 transition-colors"
-                      >
-                        {[1, 2, 3, 4, 5, 6, 8, 10].map((t) => (
-                          <option key={t} value={t}>{t} {t === 1 ? "Traveller" : "Travellers"}</option>
-                        ))}
-                      </select>
+                        className="w-full text-xs bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-white focus:outline-none focus:border-teal-500 transition-colors font-mono"
+                      />
                     </div>
                   </div>
 
